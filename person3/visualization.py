@@ -12,7 +12,7 @@ import math
 from matplotlib.animation import FuncAnimation
 
 from person1.astar import compute_astar_path
-#from person2.2 import run_bfs, run_dfs
+from person2.bfs_dfs import run_bfs, run_dfs
 
 
 # WINDOW 1: MOUSE INTERACTION
@@ -226,13 +226,14 @@ if __name__ == "__main__":
 
     #------------------------------------RUN ALGORITHMS------------------------------------
     try:
-        astar_path = compute_astar_path(G, start, goal) # to be changed to actual A* path later
+        astar_path = compute_astar_path(G, start, goal) 
     except:
         print("No path found — try again")
-                         
+    bfs_result = run_bfs(G, start, goal)
+    dfs_result = run_dfs(G, start, goal)                     
     
-    bfs_path = astar_path[::-1]                                   # to be changed to actual BFS path later
-    dfs_path = astar_path[:]  # to be changed to actual DFS path later
+    bfs_path = bfs_result["path"]                                
+    dfs_path = dfs_result["path"]
     
     
                                                   
