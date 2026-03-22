@@ -1,41 +1,45 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import math
+import os
 
 # =========================
-# STEP 1: LOAD GRAPH
+# LOAD GRAPH
 # =========================
-G = nx.read_graphml("../data/mit_campus.graphml")
+def load_graph():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "mit_campus.graphml")
+    G = nx.read_graphml(file_path)
+    return G
 
-print(f"Original Nodes: {len(G.nodes)}")
-print(f"Original Edges: {len(G.edges)}")
-
-# =========================
-# STEP 2: PREPROCESS GRAPH
-# =========================
-for n in G.nodes:
-    G.nodes[n]['x'] = float(G.nodes[n]['x'])
-    G.nodes[n]['y'] = float(G.nodes[n]['y'])
-
-for u, v, d in G.edges(data=True):
-    try:
-        d['length'] = float(d.get('length', 1.0))
-    except:
-        d['length'] = 1.0
-
-print("Coordinates and weights cleaned.")
 
 # =========================
-# STEP 3: CONNECT GRAPH
+# PREPROCESS GRAPH
 # =========================
-largest_cc = max(nx.connected_components(G.to_undirected()), key=len)
-G = G.subgraph(largest_cc).copy()
+def preprocess_graph(G):
+    for n in G.nodes:
+        G.nodes[n]['x'] = float(G.nodes[n]['x'])
+        G.nodes[n]['y'] = float(G.nodes[n]['y'])
 
-print(f"Connected Nodes: {len(G.nodes)}")
-print(f"Connected Edges: {len(G.edges)}")
+    for u, v, d in G.edges(data=True):
+        try:
+            d['length'] = float(d.get('length', 1.0))
+        except:
+            d['length'] = 1.0
+
+    return G
+
 
 # =========================
-# STEP 4: LABEL NODES (A, B, C...)
+# CONNECT GRAPH
+# =========================
+def get_connected_graph(G):
+    largest_cc = max(nx.connected_components(G.to_undirected()), key=len)
+    return G.subgraph(largest_cc).copy()
+
+
+# =========================
+# LABEL GENERATION
 # =========================
 def generate_label(index):
     label = ""
@@ -46,151 +50,135 @@ def generate_label(index):
             break
     return label
 
-for i, node in enumerate(G.nodes):
-    G.nodes[node]['label'] = generate_label(i)
 
-print("Nodes labeled as A, B, ..., Z, AA, AB...")
+def label_nodes(G):
+    for i, node in enumerate(G.nodes):
+        G.nodes[node]['label'] = generate_label(i)
+    return G
 
-# =========================
-# STEP 5: VISUALIZE CLEAN GRAPH
-# =========================
-pos = {n: (G.nodes[n]['x'], G.nodes[n]['y']) for n in G.nodes}
-
-plt.figure(figsize=(10, 10))
-
-nx.draw(
-    G,
-    pos,
-    node_size=20,
-    edge_color='gray',
-    width=0.5,
-    alpha=0.7
-)
-
-labels = {n: G.nodes[n]['label'] for n in G.nodes}
-
-nx.draw_networkx_labels(
-    G,
-    pos,
-    labels,
-    font_size=4
-)
-
-plt.title("Campus Graph Representation")
-plt.savefig("clean_graph.png", dpi=300, bbox_inches='tight')
-print("Clean graph saved as clean_graph.png")
-plt.close()
 
 # =========================
-# STEP 6: SAVE CLEAN GRAPH
+# POSITION MAPPING
 # =========================
-nx.write_graphml(G, "mit_clean.graphml")
-print("Clean dataset saved as mit_clean.graphml")
+def get_positions(G):
+    return {n: (G.nodes[n]['x'], G.nodes[n]['y']) for n in G.nodes}
 
-# =========================
-# STEP 7: USER INPUT SETUP
-# =========================
-
-# Create mappings
-label_to_node = {}
-node_to_label = {}
-
-for n in G.nodes:
-    label = G.nodes[n]['label']
-    label_to_node[label] = n
-    node_to_label[n] = label
-
-# Show available nodes
-print("\nAvailable Nodes:")
-print(", ".join(label_to_node.keys()))
-
-# Take input
-start_label = input("\nEnter START node (e.g., A, B, AA): ").strip().upper()
-goal_label = input("Enter GOAL node (e.g., C, D, AB): ").strip().upper()
-
-# Validate input
-if start_label not in label_to_node or goal_label not in label_to_node:
-    print("❌ Invalid node label entered!")
-    exit()
-
-start = label_to_node[start_label]
-goal = label_to_node[goal_label]
-
-if start == goal:
-    print("❌ Start and Goal cannot be same!")
-    exit()
-
-print(f"\nSelected Start: {start_label}")
-print(f"Selected Goal: {goal_label}")
 
 # =========================
-# STEP 8: A* ALGORITHM
+# SAVE CLEAN GRAPH
 # =========================
-def heuristic(n1, n2):
+def save_graph(G, filename="mit_clean.graphml"):
+    nx.write_graphml(G, filename)
+
+
+# =========================
+# VISUALIZE GRAPH
+# =========================
+def visualize_graph(G, pos, filename="clean_graph.png"):
+    plt.figure(figsize=(10, 10))
+
+    nx.draw(
+        G,
+        pos,
+        node_size=20,
+        edge_color='gray',
+        width=0.5,
+        alpha=0.7
+    )
+
+    labels = {n: G.nodes[n]['label'] for n in G.nodes}
+
+    nx.draw_networkx_labels(
+        G,
+        pos,
+        labels,
+        font_size=4
+    )
+
+    plt.title("Campus Graph Representation")
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+# =========================
+# LABEL ↔ NODE MAPPING
+# =========================
+def create_label_mappings(G):
+    label_to_node = {}
+    node_to_label = {}
+
+    for n in G.nodes:
+        label = G.nodes[n]['label']
+        label_to_node[label] = n
+        node_to_label[n] = label
+
+    return label_to_node, node_to_label
+
+
+# =========================
+# HEURISTIC FUNCTION
+# =========================
+def heuristic(G, n1, n2):
     x1, y1 = G.nodes[n1]['x'], G.nodes[n1]['y']
     x2, y2 = G.nodes[n2]['x'], G.nodes[n2]['y']
-    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)  # Euclidean
+    return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
-path = nx.astar_path(G, start, goal, heuristic=heuristic, weight='length')
-path_edges = list(zip(path, path[1:]))
 
 # =========================
-# STEP 9: VISUALIZE PATH
+# A* PATH
 # =========================
-plt.figure(figsize=(10, 10))
+def compute_astar_path(G, start, goal):
+    return nx.astar_path(G, start, goal,
+                         heuristic=lambda a, b: heuristic(G, a, b),
+                         weight='length')
 
-nx.draw(
-    G,
-    pos,
-    node_size=5,
-    edge_color='lightgray',
-    width=0.5,
-    alpha=0.6
-)
-
-nx.draw_networkx_edges(
-    G,
-    pos,
-    edgelist=path_edges,
-    edge_color='red',
-    width=2
-)
-
-nx.draw_networkx_nodes(
-    G, pos,
-    nodelist=[start],
-    node_color='green',
-    node_size=80,
-    label="Start"
-)
-
-nx.draw_networkx_nodes(
-    G, pos,
-    nodelist=[goal],
-    node_color='blue',
-    node_size=80,
-    label="Goal"
-)
-
-nx.draw_networkx_labels(
-    G,
-    pos,
-    {start: "Start", goal: "Goal"},
-    font_size=8
-)
-
-plt.title("Campus Route Planning using A* Algorithm")
-plt.legend()
-
-plt.savefig("astar_visualization.png", dpi=300, bbox_inches='tight')
-print("A* visualization saved as astar_visualization.png")
-
-plt.close()
 
 # =========================
-# FINAL SUMMARY
+# VISUALIZE PATH
 # =========================
-print("\n--- FINAL SUMMARY ---")
-print(f"Final Nodes: {len(G.nodes)}")
-print(f"Final Edges: {len(G.edges)}")
-print("Graph is clean, labeled, connected, and ready for team use.")
+def visualize_path(G, pos, path, start, goal, filename="astar_visualization.png"):
+    path_edges = list(zip(path, path[1:]))
+
+    plt.figure(figsize=(10, 10))
+
+    nx.draw(
+        G,
+        pos,
+        node_size=5,
+        edge_color='lightgray',
+        width=0.5,
+        alpha=0.6
+    )
+
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        edgelist=path_edges,
+        edge_color='red',
+        width=2
+    )
+
+    nx.draw_networkx_nodes(
+        G, pos,
+        nodelist=[start],
+        node_color='green',
+        node_size=80
+    )
+
+    nx.draw_networkx_nodes(
+        G, pos,
+        nodelist=[goal],
+        node_color='blue',
+        node_size=80
+    )
+
+    nx.draw_networkx_labels(
+        G,
+        pos,
+        {start: "Start", goal: "Goal"},
+        font_size=8
+    )
+
+    plt.title("Campus Route Planning using A* Algorithm")
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.close()
