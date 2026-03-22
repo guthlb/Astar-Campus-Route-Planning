@@ -1,8 +1,18 @@
+import sys
+import os
+
+# ADD PROJECT ROOT TO PATH  (VERY IMPORTANT)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import math
+
 from matplotlib.animation import FuncAnimation
+
+from person1.astar import compute_astar_path
+#from person2.2 import run_bfs, run_dfs
 
 
 # WINDOW 1: MOUSE INTERACTION
@@ -49,7 +59,7 @@ def interactive_route_selection(G, pos):
                 G, pos,
                 nodelist=[state["start"]],
                 node_color="green",
-                node_size=120,
+                node_size=100,
                 ax=ax
             )
 
@@ -58,7 +68,7 @@ def interactive_route_selection(G, pos):
                 G, pos,
                 nodelist=[state["goal"]],
                 node_color="red",
-                node_size=120,
+                node_size=100,
                 ax=ax
             )
 
@@ -108,6 +118,21 @@ def animate_path(G, pos, path):
         ax=ax
     )
 
+    nx.draw_networkx_nodes(
+        G, pos,
+        nodelist=[path[0]],
+        node_color='green',
+        node_size=100,
+        ax=ax
+    )
+
+    nx.draw_networkx_nodes(
+        G, pos,
+        nodelist=[path[-1]],
+        node_color='red',
+        node_size=100,
+        ax=ax
+    )
     ax.set_title("A* Route Navigation")
     ax.axis("off")
 
@@ -160,7 +185,7 @@ def visualize_comparison(G, pos,start,goal,astar_path,bfs_path,dfs_path):
                            pos, 
                            nodelist=[start,goal], 
                            node_color=['green','red'], 
-                           node_size=150, 
+                           node_size=100, 
                            ax=ax)   
         
         ax.set_title(title)
@@ -185,7 +210,10 @@ def visualize_comparison(G, pos,start,goal,astar_path,bfs_path,dfs_path):
 
 if __name__ == "__main__":
 
-    G = nx.read_graphml("../data/mit_clean.graphml")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "mit_clean.graphml")
+
+    G = nx.read_graphml(file_path)
 
     pos = {
         n: (float(G.nodes[n]['x']),
@@ -197,9 +225,17 @@ if __name__ == "__main__":
     start, goal = interactive_route_selection(G, pos)
 
     #------------------------------------RUN ALGORITHMS------------------------------------
-    astar_path = nx.shortest_path(G, start, goal)                           # to be changed to actual A* path later
-    bfs_path = astar_path[::-1]                                            # to be changed to actual BFS path later
-    dfs_path = astar_path[:]                                                # to be changed to actual DFS path later
+    try:
+        astar_path = compute_astar_path(G, start, goal) # to be changed to actual A* path later
+    except:
+        print("No path found — try again")
+                         
+    
+    bfs_path = astar_path[::-1]                                   # to be changed to actual BFS path later
+    dfs_path = astar_path[:]  # to be changed to actual DFS path later
+    
+    
+                                                  
 
 
     #------------------------------------WINDOW 2: A* ANIMATION------------------------------------
